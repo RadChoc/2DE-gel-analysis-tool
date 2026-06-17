@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>2-DE Gel Analysis & Alignment Tool (Pro)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .header { margin-bottom: 20px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .title-area { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .title-area h2 { margin: 0 0 5px 0; color: #2c3e50; }
+        .title-area p { margin: 0; color: #7f8c8d; font-size: 14px; }
+        
+        .export-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-export { padding: 8px 15px; background-color: #0984e3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; font-size: 13px; }
+        .btn-export:hover { background-color: #74b9ff; }
+        .btn-export.import-btn { background-color: #f39c12; }
+        .btn-export.import-btn:hover { background-color: #f1c40f; }
+        .btn-export.img-btn { background-color: #00b894; }
+        .btn-export.img-btn:hover { background-color: #55efc4; }
+
+        .controls-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+        .control-group { background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #e9ecef; }
+        .control-group-title { font-size: 12px; text-transform: uppercase; color: #a4b0be; font-weight: bold; margin-bottom: 10px; display: block; letter-spacing: 0.5px; }
+        
+        .control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        .control-row:last-child { margin-bottom: 0; }
+        .control-row label { font-size: 13px; font-weight: 600; color: #495057; white-space: nowrap; }
+        
+        input[type="number"], input[type="range"] { padding: 4px; border: 1px solid #ced4da; border-radius: 4px; outline: none; width: 100px; }
+        input[type="color"] { border: none; width: 25px; height: 25px; padding: 0; border-radius: 4px; cursor: pointer; background: none; }
+        
+        .auto-toggle { background-color: #0984e3; color: white; padding: 6px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer; border: none; font-size: 13px; width: 100%; justify-content: center; }
+        
+        .main-container { display: flex; gap: 20px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .canvas-wrapper { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; flex: 1; min-width: 500px; overflow: auto; }
+        .canvas-wrapper h3 { margin-top: 0; color: #2d3436; }
+        .file-input { margin-bottom: 15px; }
+        canvas { border: 1px solid #dfe6e9; cursor: crosshair; border-radius: 4px; display: block; margin: 0 auto; background: #fafafa; }
+        
+        .status-bar { margin: 10px 0 20px 0; font-weight: bold; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #0984e3; display: flex; justify-content: space-between; align-items: center; }
+        .status-hint { font-size: 13px; color: #e84393; font-weight: normal; background: #fd79a820; padding: 6px 10px; border-radius: 4px; }
+
+        .data-panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: center; }
+        th, td { border: 1px solid #dfe6e9; padding: 10px; font-size: 14px; vertical-align: middle; }
+        th { background-color: #f1f2f6; color: #2d3436; }
+        tr:hover { background-color: #f8f9fa; }
+        .diff-row { background-color: #fff0f5; }
+        .flag-row { background-color: #fff9e6; }
+        .diff-badge { background: #e84393; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        .flag-badge { background: #f39c12; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        
+        .remark-input { width: 100%; max-width: 200px; box-sizing: border-box; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; background: #fafafa; }
+        .remark-input:focus { border-color: #0984e3; background: white; outline: none; }
+
+        .btn-delete { background: #ff7675; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-delete:hover { background: #d63031; }
+        .btn-flag { background: #f1c40f; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px; }
+        .btn-flag:hover { background: #e67e22; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="title-area">
+        <div>
+            <h2>2-DE Gel Analysis Tool</h2>
+            <p>Centered Numbering, Remarks Support, Display Filters, and Isolated Spot Tracking (Shift+Click / Alt+Click).</p>
+        </div>
+        <div class="export-group">
+            <button class="btn-export" onclick="exportCSV()">⬇ Export Data (CSV)</button>
+            <input type="file" id="importCsv" accept=".csv" style="display:none" onchange="importCSV(event)">
+            <button class="btn-export import-btn" onclick="document.getElementById('importCsv').click()">⬆ Import Data (CSV)</button>
+            <button class="btn-export img-btn" onclick="exportImage('canvasLeft', 'Gel1_Annotated.png')">📷 Export Left Image</button>
+            <button class="btn-export img-btn" onclick="exportImage('canvasRight', 'Gel2_Annotated.png')">📷 Export Right Image</button>
+        </div>
+    </div>
+    
+    <div class="controls-panel">
+        <div class="control-group">
+            <span class="control-group-title">Matching & Zoom</span>
+            <div class="control-row">
+                <label class="auto-toggle">
+                    <input type="checkbox" id="autoMatchToggle" checked onchange="updateStatus()"> Semi-Auto Match
+                </label>
+            </div>
+            <div class="control-row">
+                <label>Search Radius (px):</label>
+                <input type="number" id="searchRadius" value="30" min="10" max="100">
+            </div>
+            <div class="control-row">
+                <label>Left Gel Zoom:</label>
+                <input type="range" id="zoomLeft" min="0.5" max="3.0" step="0.1" value="1.0" oninput="applyZoom()">
+            </div>
+            <div class="control-row">
+                <label>Right Gel Zoom:</label>
+                <input type="range" id="zoomRight" min="0.5" max="3.0" step="0.1" value="1.0" oninput="applyZoom()">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="control-group-title">Display Filter</span>
+            <div class="control-row"><label><input type="checkbox" id="showMatched" checked onchange="redrawAll()"> Show Matched</label></div>
+            <div class="control-row"><label><input type="checkbox" id="showDiff" checked onchange="redrawAll()"> Show Diff</label></div>
+            <div class="control-row"><label><input type="checkbox" id="showFlag" checked onchange="redrawAll()"> Show Flagged</label></div>
+        </div>
+
+        <div class="control-group">
+            <span class="control-group-title">Size & Opacity</span>
+            <div class="control-row">
+                <label>Marker Size:</label>
+                <input type="range" id="markerRadius" min="2" max="25" value="6" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Line Thickness:</label>
+                <input type="range" id="lineWidth" min="0.5" max="20" step="0.5" value="1.5" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Font Size:</label>
+                <input type="range" id="fontSize" min="4" max="32" value="14" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Marker Opacity (%):</label>
+                <input type="range" id="markerOpacity" min="0" max="100" step="1" value="80" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Text Opacity (%):</label>
+                <input type="range" id="textOpacity" min="0" max="100" step="1" value="100" oninput="redrawAll()">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="control-group-title">Color Palette</span>
+            <div class="control-row">
+                <label>Left Circle & Text:</label>
+                <input type="color" id="leftColor" value="#0b5b06" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Right Circle & Text:</label>
+                <input type="color" id="rightColor" value="#d01111" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Diff Spot Color (Shift):</label>
+                <input type="color" id="diffColor" value="#121fd9" oninput="redrawAll()">
+            </div>
+            <div class="control-row">
+                <label>Flag Color (Alt):</label>
+                <input type="color" id="flagColor" value="#aabd1f" oninput="redrawAll()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="status-bar">
+    <div id="statusText" style="color: #636e72;">Waiting for gel images to be uploaded...</div>
+    <div class="status-hint">💡 Tip: <b>Shift+Click</b> = Isolated Diff spot | <b>Alt+Click</b> = Isolated Flagged spot</div>
+</div>
+
+<div class="main-container">
+    <div class="canvas-wrapper">
+        <h3>Control Group (Gel 1)</h3>
+        <input type="file" class="file-input" id="uploadLeft" accept="image/jpeg, image/png" onchange="loadImage(event, 'canvasLeft')">
+        <canvas id="canvasLeft"></canvas>
+    </div>
+
+    <div class="canvas-wrapper">
+        <h3>Experimental Group (Gel 2)</h3>
+        <input type="file" class="file-input" id="uploadRight" accept="image/jpeg, image/png" onchange="loadImage(event, 'canvasRight')">
+        <canvas id="canvasRight"></canvas>
+    </div>
+</div>
+
+<div class="data-panel">
+    <h3 style="margin-top: 0;">Matched Data Records</h3>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>Spot ID</th>
+                <th>Gel 1 Coord (X, Y)</th>
+                <th>Gel 2 Coord (X, Y)</th>
+                <th>Remarks</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const canvasLeft = document.getElementById('canvasLeft');
+    const ctxLeft = canvasLeft.getContext('2d', { willReadFrequently: true });
+    const canvasRight = document.getElementById('canvasRight');
+    const ctxRight = canvasRight.getContext('2d', { willReadFrequently: true });
+    
+    let currentStep = 'wait_left'; 
+    let tempLeftPoint = null;
+    let pendingId = null;
+    let lastAddedId = null; 
+    let spotsData = []; 
+    let imgLeftObj = null;
+    let imgRightObj = null;
+    const baseDisplayWidth = 600; 
+
+    function loadImage(event, canvasId) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.getElementById(canvasId);
+                canvas.width = img.width; 
+                canvas.height = img.height;
+                
+                if (canvasId === 'canvasLeft') imgLeftObj = img;
+                else if (canvasId === 'canvasRight') imgRightObj = img;
+                
+                applyZoom(); 
+                redrawAll(); 
+                updateStatus();
+            }
+            img.src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function applyZoom() {
+        const zLeft = parseFloat(document.getElementById('zoomLeft').value);
+        const zRight = parseFloat(document.getElementById('zoomRight').value);
+        
+        if (imgLeftObj) canvasLeft.style.width = Math.round(baseDisplayWidth * zLeft) + 'px';
+        if (imgRightObj) canvasRight.style.width = Math.round(baseDisplayWidth * zRight) + 'px';
+    }
+
+    function getNextId(isDiff) {
+        let i = 1;
+        if (isDiff) {
+            while (spotsData.find(s => s.id === 'D' + i)) i++;
+            return 'D' + i;
+        } else {
+            while (spotsData.find(s => s.id == i)) i++; 
+            return i.toString();
+        }
+    }
+
+    function updateStatus() {
+        const statusEl = document.getElementById('statusText');
+        if (!imgLeftObj && !imgRightObj) {
+            statusEl.innerText = "Please upload gel images to begin analysis.";
+            statusEl.style.color = "#636e72";
+            return;
+        }
+        if (!imgLeftObj || !imgRightObj) {
+            statusEl.innerText = "Please ensure both images are uploaded before pairing points.";
+            statusEl.style.color = "#f39c12";
+            return;
+        }
+        
+        const isAuto = document.getElementById('autoMatchToggle').checked;
+        const nextId = pendingId || getNextId(false);
+
+        if (isAuto) {
+            statusEl.innerHTML = `✅ <b>Semi-Auto Mode</b>: Click point <b>${nextId}</b> on the LEFT gel. System will auto-search the right gel.`;
+            statusEl.style.color = "#00b894";
+        } else {
+            if (currentStep === 'wait_left') {
+                statusEl.innerHTML = `🔵 <b>Manual Mode</b>: Click point <b>${nextId}</b> on the LEFT gel.`;
+                statusEl.style.color = "#0984e3";
+            } else {
+                statusEl.innerHTML = `🟠 <b>Manual Mode</b>: Click matching point <b>${nextId}</b> on the RIGHT gel.`;
+                statusEl.style.color = "#e17055";
+            }
+        }
+    }
+
+    function getMousePos(canvas, evt) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: Math.round((evt.clientX - rect.left) * scaleX),
+            y: Math.round((evt.clientY - rect.top) * scaleY)
+        };
+    }
+
+    function drawMarker(ctx, canvas, x, y, id, isDiff, isFlagged, side) {
+        const baseRadius = parseInt(document.getElementById('markerRadius').value);
+        const baseLineWidth = parseFloat(document.getElementById('lineWidth').value);
+        const baseFontSize = parseInt(document.getElementById('fontSize').value);
+        
+        const markerOp = parseInt(document.getElementById('markerOpacity').value) / 100;
+        const textOp = parseInt(document.getElementById('textOpacity').value) / 100;
+        
+        const leftCol = document.getElementById('leftColor').value;
+        const rightCol = document.getElementById('rightColor').value;
+        const diffCol = document.getElementById('diffColor').value;
+        const flagCol = document.getElementById('flagColor').value;
+        
+        let circleColor = side === 'left' ? leftCol : rightCol;
+        if (isDiff) circleColor = diffCol;
+        if (isFlagged) circleColor = flagCol;
+
+        const internalScale = canvas.width / baseDisplayWidth;
+        const radius = baseRadius * internalScale;
+        const fontSize = baseFontSize * internalScale;
+
+        // Draw Circle
+        ctx.globalAlpha = markerOp;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+        ctx.lineWidth = baseLineWidth * internalScale;
+        ctx.strokeStyle = circleColor;
+        
+        if (isFlagged) {
+            ctx.setLineDash([4 * internalScale, 4 * internalScale]);
+        } else {
+            ctx.setLineDash([]);
+        }
+        
+        ctx.stroke();
+        ctx.setLineDash([]); 
+        
+        // Draw Text (居中对齐，位于圆圈正下方)
+        ctx.globalAlpha = textOp;
+        ctx.fillStyle = circleColor; 
+        ctx.font = `bold ${fontSize}px Arial`;
+        ctx.textAlign = "center"; 
+        ctx.fillText(id, x, y + radius + fontSize + (0.1 * internalScale));
+        
+        ctx.globalAlpha = 1.0; 
+    }
+
+    function findDarkestSpot(ctx, canvas, originX, originY, visualRadius) {
+        const internalScale = canvas.width / baseDisplayWidth;
+        const radius = Math.round(visualRadius * internalScale);
+
+        const startX = Math.max(0, originX - radius);
+        const startY = Math.max(0, originY - radius);
+        const endX = Math.min(canvas.width, originX + radius);
+        const endY = Math.min(canvas.height, originY + radius);
+        const width = endX - startX;
+        const height = endY - startY;
+        
+        if (width <= 0 || height <= 0) return { x: originX, y: originY };
+
+        const imageData = ctx.getImageData(startX, startY, width, height);
+        const data = imageData.data;
+        
+        let minIntensity = 255 * 3; 
+        let darkestX = originX;
+        let darkestY = originY;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4;
+                const intensity = data[i] + data[i+1] + data[i+2]; 
+                
+                const dx = (startX + x) - originX;
+                const dy = (startY + y) - originY;
+                if (dx*dx + dy*dy <= radius*radius) {
+                    if (intensity < minIntensity) {
+                        minIntensity = intensity;
+                        darkestX = startX + x;
+                        darkestY = startY + y;
+                    }
+                }
+            }
+        }
+        return { x: darkestX, y: darkestY };
+    }
+
+    // 左侧点击事件
+    canvasLeft.addEventListener('click', function(evt) {
+        if (!imgLeftObj) return alert("Please upload the left image first!");
+        
+        const isDiff = evt.shiftKey; 
+        const isFlagged = evt.altKey;
+        const posLeft = getMousePos(canvasLeft, evt);
+        
+        if (isDiff || isFlagged) {
+            const newId = getNextId(isDiff); 
+            saveData(posLeft, null, newId, isDiff, isFlagged); 
+            return; 
+        }
+
+        if (!imgRightObj) return alert("Please upload both images for normal pairing!");
+
+        const isAuto = document.getElementById('autoMatchToggle').checked;
+        if (!isAuto && currentStep !== 'wait_left') return alert("Please match the current point on the right gel first!");
+
+        const newId = getNextId(false); 
+        
+        if (isAuto) {
+            const visualRadius = parseInt(document.getElementById('searchRadius').value) || 30;
+            const posRight = findDarkestSpot(ctxRight, canvasRight, posLeft.x, posLeft.y, visualRadius);
+            saveData(posLeft, posRight, newId, false, false);
+        } else {
+            tempLeftPoint = posLeft;
+            pendingId = newId;
+            currentStep = 'wait_right';
+            redrawAll(); 
+            updateStatus();
+        }
+    });
+
+    // 右侧点击事件
+    canvasRight.addEventListener('click', function(evt) {
+        if (!imgRightObj) return alert("Please upload the right image first!");
+        
+        const isDiff = evt.shiftKey; 
+        const isFlagged = evt.altKey;
+        const posRight = getMousePos(canvasRight, evt);
+        
+        if (isDiff || isFlagged) {
+            const newId = getNextId(isDiff);
+            saveData(null, posRight, newId, isDiff, isFlagged); 
+            return;
+        }
+
+        if (!imgLeftObj) return; 
+
+        const isAuto = document.getElementById('autoMatchToggle').checked;
+        
+        if (isAuto) {
+            if (lastAddedId !== null) {
+                const targetSpot = spotsData.find(s => s.id === lastAddedId);
+                if (targetSpot && !targetSpot.isDiff && !targetSpot.isFlagged) {
+                    targetSpot.right = posRight;
+                    redrawAll();
+                    renderTable();
+                }
+            }
+            return;
+        }
+
+        if (currentStep !== 'wait_right') return alert("Please select a base point on the left gel first!");
+
+        saveData(tempLeftPoint, posRight, pendingId, false, false);
+        
+        tempLeftPoint = null;
+        pendingId = null;
+        currentStep = 'wait_left';
+        updateStatus();
+    });
+
+    function sortSpotsData() {
+        spotsData.sort((a, b) => {
+            if (a.isDiff && !b.isDiff) return 1;
+            if (!a.isDiff && b.isDiff) return -1;
+            if (a.isDiff && b.isDiff) return parseInt(a.id.substring(1)) - parseInt(b.id.substring(1));
+            return parseInt(a.id) - parseInt(b.id);
+        });
+    }
+
+    function saveData(leftPos, rightPos, idToSave, isDiff, isFlagged = false) {
+        spotsData.push({
+            id: idToSave, 
+            left: leftPos,
+            right: rightPos,
+            isDiff: isDiff,
+            isFlagged: isFlagged,
+            remark: "" // 新增：初始化备注为空
+        });
+        
+        lastAddedId = idToSave; 
+        sortSpotsData();
+        redrawAll();
+        renderTable();
+        updateStatus();
+    }
+
+    function removeData(idToRemove) {
+        spotsData = spotsData.filter(spot => spot.id != idToRemove);
+        if(lastAddedId == idToRemove) lastAddedId = null; 
+        if(currentStep === 'wait_right' && pendingId == idToRemove) {
+            currentStep = 'wait_left'; 
+            tempLeftPoint = null;
+            pendingId = null;
+        }
+        redrawAll();
+        renderTable();
+        updateStatus();
+    }
+
+    function toggleFlag(idToToggle) {
+        const spot = spotsData.find(s => s.id == idToToggle);
+        if(spot) {
+            spot.isFlagged = !spot.isFlagged;
+            redrawAll();
+            renderTable();
+        }
+    }
+
+    // 更新备注内容的函数
+    function updateRemark(idToUpdate, newRemark) {
+        const spot = spotsData.find(s => s.id == idToUpdate);
+        if(spot) {
+            spot.remark = newRemark;
+        }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        spotsData.forEach((spot) => {
+            const tr = document.createElement('tr');
+            if(spot.isFlagged) tr.className = "flag-row";
+            else if(spot.isDiff) tr.className = "diff-row";
+            
+            let idHtml = `<strong>${spot.id}</strong>`;
+            if (spot.isDiff) idHtml += `<span class="diff-badge">DIFF</span>`;
+            if (spot.isFlagged) idHtml += `<span class="flag-badge">FLAG</span>`;
+
+            const leftCoord = spot.left ? `(${spot.left.x}, ${spot.left.y})` : '-';
+            const rightCoord = spot.right ? `(${spot.right.x}, ${spot.right.y})` : '-';
+
+            // 修改了渲染列，增加 remark-input 输入框
+            tr.innerHTML = `
+                <td>${idHtml}</td>
+                <td>${leftCoord}</td>
+                <td>${rightCoord}</td>
+                <td>
+                    <input type="text" class="remark-input" value="${spot.remark || ''}" 
+                           placeholder="Add remark..." onchange="updateRemark('${spot.id}', this.value)">
+                </td>
+                <td>
+                    <button class="btn-flag" onclick="toggleFlag('${spot.id}')">Flag</button>
+                    <button class="btn-delete" onclick="removeData('${spot.id}')">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function redrawAll() {
+        if (imgLeftObj) {
+            ctxLeft.clearRect(0, 0, canvasLeft.width, canvasLeft.height);
+            ctxLeft.drawImage(imgLeftObj, 0, 0, canvasLeft.width, canvasLeft.height);
+        }
+        
+        if (imgRightObj) {
+            ctxRight.clearRect(0, 0, canvasRight.width, canvasRight.height);
+            ctxRight.drawImage(imgRightObj, 0, 0, canvasRight.width, canvasRight.height);
+        }
+
+        const showMatched = document.getElementById('showMatched').checked;
+        const showDiff = document.getElementById('showDiff').checked;
+        const showFlag = document.getElementById('showFlag').checked;
+
+        spotsData.forEach(spot => {
+            let visible = false;
+            if (showFlag && spot.isFlagged) visible = true;
+            else if (showDiff && spot.isDiff) visible = true;
+            else if (showMatched && !spot.isDiff && !spot.isFlagged) visible = true;
+
+            if (visible) {
+                if (imgLeftObj && spot.left) drawMarker(ctxLeft, canvasLeft, spot.left.x, spot.left.y, spot.id, spot.isDiff, spot.isFlagged, 'left');
+                if (imgRightObj && spot.right) drawMarker(ctxRight, canvasRight, spot.right.x, spot.right.y, spot.id, spot.isDiff, spot.isFlagged, 'right');
+            }
+        });
+
+        const isAuto = document.getElementById('autoMatchToggle').checked;
+        if (!isAuto && currentStep === 'wait_right' && tempLeftPoint && imgLeftObj) {
+             drawMarker(ctxLeft, canvasLeft, tempLeftPoint.x, tempLeftPoint.y, pendingId, false, false, 'left');
+        }
+    }
+
+    function exportCSV() {
+        if (spotsData.length === 0) return alert("No data available to export.");
+        // 增加 Remark 导出列
+        let csvContent = "data:text/csv;charset=utf-8,ID,Is_Differential,Is_Flagged,Left_X,Left_Y,Right_X,Right_Y,Remark\n";
+        spotsData.forEach(row => {
+            const lx = row.left ? row.left.x : 'null';
+            const ly = row.left ? row.left.y : 'null';
+            const rx = row.right ? row.right.x : 'null';
+            const ry = row.right ? row.right.y : 'null';
+            // 确保备注中的英文逗号被替换掉，以免打乱CSV结构
+            const safeRemark = (row.remark || '').replace(/,/g, ' '); 
+            csvContent += `${row.id},${row.isDiff ? 'YES' : 'NO'},${row.isFlagged ? 'YES' : 'NO'},${lx},${ly},${rx},${ry},${safeRemark}\n`;
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "2DE_Analysis_Data.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            let newSpots = [];
+            
+            for(let i = 1; i < lines.length; i++) {
+                if(!lines[i].trim()) continue;
+                const cols = lines[i].split(',');
+                
+                if(cols.length >= 6) {
+                    const idStr = cols[0];
+                    const isDiff = cols[1] === 'YES';
+                    
+                    let isFlagged = false;
+                    let lxIdx, lyIdx, rxIdx, ryIdx;
+
+                    if (cols[2] === 'YES' || cols[2] === 'NO') {
+                        isFlagged = cols[2] === 'YES';
+                        lxIdx = 3; lyIdx = 4; rxIdx = 5; ryIdx = 6;
+                    } else {
+                        lxIdx = 2; lyIdx = 3; rxIdx = 4; ryIdx = 5;
+                    }
+
+                    const leftObj = cols[lxIdx].trim() === 'null' ? null : { x: parseInt(cols[lxIdx]), y: parseInt(cols[lyIdx]) };
+                    const rightObj = cols[rxIdx].trim() === 'null' ? null : { x: parseInt(cols[rxIdx]), y: parseInt(cols[ryIdx]) };
+                    
+                    // 读取导入时的备注信息，兼容旧版本无备注列的数据
+                    const remarkStr = cols[ryIdx + 1] ? cols[ryIdx + 1].trim() : "";
+                    
+                    newSpots.push({
+                        id: idStr,
+                        isDiff: isDiff,
+                        isFlagged: isFlagged,
+                        left: leftObj,
+                        right: rightObj,
+                        remark: remarkStr
+                    });
+                }
+            }
+            
+            spotsData = newSpots;
+            sortSpotsData();
+            lastAddedId = null; 
+            redrawAll();
+            renderTable();
+            updateStatus();
+        };
+        reader.readAsText(file);
+        event.target.value = ''; 
+    }
+
+    function exportImage(canvasId, defaultFilename) {
+        const canvas = document.getElementById(canvasId);
+        if ((canvasId === 'canvasLeft' && !imgLeftObj) || (canvasId === 'canvasRight' && !imgRightObj)) {
+            return alert("No image available to export.");
+        }
+        
+        const dataURL = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.download = defaultFilename;
+        link.href = dataURL;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
