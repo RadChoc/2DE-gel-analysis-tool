@@ -18,10 +18,18 @@
         .btn-export.img-btn { background-color: #00b894; }
         .btn-export.img-btn:hover { background-color: #55efc4; }
 
+        /* 特别针对原生 select 下拉菜单的一点样式优化 */
+        select.btn-export { outline: none; appearance: auto; cursor: pointer; }
+
         .controls-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; border-top: 1px solid #eee; padding-top: 15px; }
         .control-group { background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #e9ecef; }
         .control-group-title { font-size: 12px; text-transform: uppercase; color: #a4b0be; font-weight: bold; margin-bottom: 10px; display: block; letter-spacing: 0.5px; }
         
+        .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .filter-header .control-group-title { margin-bottom: 0; }
+        .btn-filter-action { background: #dfe6e9; border: none; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: #2d3436; cursor: pointer; transition: 0.2s; }
+        .btn-filter-action:hover { background: #b2bec3; }
+
         .control-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
         .control-row:last-child { margin-bottom: 0; }
         .control-row label { font-size: 13px; font-weight: 600; color: #495057; white-space: nowrap; }
@@ -71,8 +79,12 @@
             <button class="btn-export" onclick="exportCSV()">⬇ Export Data (CSV)</button>
             <input type="file" id="importCsv" accept=".csv" style="display:none" onchange="importCSV(event)">
             <button class="btn-export import-btn" onclick="document.getElementById('importCsv').click()">⬆ Import Data (CSV)</button>
-            <button class="btn-export img-btn" onclick="exportImage('canvasLeft', 'Gel1_Annotated.png')">📷 Export Left Image</button>
-            <button class="btn-export img-btn" onclick="exportImage('canvasRight', 'Gel2_Annotated.png')">📷 Export Right Image</button>
+            
+            <select class="btn-export img-btn" onchange="handleExportDropdown(this)">
+                <option value="" disabled selected>📷 Export Image...</option>
+                <option value="left">Export Gel 1 (Left)</option>
+                <option value="right">Export Gel 2 (Right)</option>
+            </select>
         </div>
     </div>
     
@@ -99,10 +111,17 @@
         </div>
 
         <div class="control-group">
-            <span class="control-group-title">Display Filter</span>
-            <div class="control-row"><label><input type="checkbox" id="showMatched" checked onchange="redrawAll()"> Show Matched</label></div>
-            <div class="control-row"><label><input type="checkbox" id="showDiff" checked onchange="redrawAll()"> Show Diff</label></div>
-            <div class="control-row"><label><input type="checkbox" id="showFlag" checked onchange="redrawAll()"> Show Flagged</label></div>
+            <div class="filter-header">
+                <span class="control-group-title">Display Filter</span>
+                <div>
+                    <button class="btn-filter-action" onclick="toggleFilters(true)">Select All</button>
+                    <button class="btn-filter-action" onclick="toggleFilters(false)">Reset</button>
+                </div>
+            </div>
+            <div class="control-row"><label><input type="checkbox" id="showMatched" checked onchange="redrawAll()"> Reviewed Matches</label></div>
+            <div class="control-row"><label><input type="checkbox" id="showFlaggedMatched" checked onchange="redrawAll()"> Flagged Matches</label></div>
+            <div class="control-row"><label><input type="checkbox" id="showDiff" checked onchange="redrawAll()"> Reviewed Diff</label></div>
+            <div class="control-row"><label><input type="checkbox" id="showFlaggedDiff" checked onchange="redrawAll()"> Flagged Diff</label></div>
         </div>
 
         <div class="control-group">
@@ -200,6 +219,14 @@
     let imgLeftObj = null;
     let imgRightObj = null;
     const baseDisplayWidth = 600; 
+
+    function toggleFilters(state) {
+        document.getElementById('showMatched').checked = state;
+        document.getElementById('showFlaggedMatched').checked = state;
+        document.getElementById('showDiff').checked = state;
+        document.getElementById('showFlaggedDiff').checked = state;
+        redrawAll();
+    }
 
     function loadImage(event, canvasId) {
         const file = event.target.files[0];
@@ -459,7 +486,7 @@
             right: rightPos,
             isDiff: isDiff,
             isFlagged: isFlagged,
-            remark: "" // 新增：初始化备注为空
+            remark: "" // 初始化备注为空
         });
         
         lastAddedId = idToSave; 
@@ -491,7 +518,6 @@
         }
     }
 
-    // 更新备注内容的函数
     function updateRemark(idToUpdate, newRemark) {
         const spot = spotsData.find(s => s.id == idToUpdate);
         if(spot) {
@@ -514,7 +540,6 @@
             const leftCoord = spot.left ? `(${spot.left.x}, ${spot.left.y})` : '-';
             const rightCoord = spot.right ? `(${spot.right.x}, ${spot.right.y})` : '-';
 
-            // 修改了渲染列，增加 remark-input 输入框
             tr.innerHTML = `
                 <td>${idHtml}</td>
                 <td>${leftCoord}</td>
@@ -544,14 +569,17 @@
         }
 
         const showMatched = document.getElementById('showMatched').checked;
+        const showFlaggedMatched = document.getElementById('showFlaggedMatched').checked;
         const showDiff = document.getElementById('showDiff').checked;
-        const showFlag = document.getElementById('showFlag').checked;
+        const showFlaggedDiff = document.getElementById('showFlaggedDiff').checked;
 
         spotsData.forEach(spot => {
             let visible = false;
-            if (showFlag && spot.isFlagged) visible = true;
-            else if (showDiff && spot.isDiff) visible = true;
-            else if (showMatched && !spot.isDiff && !spot.isFlagged) visible = true;
+            
+            if (!spot.isDiff && !spot.isFlagged && showMatched) visible = true;
+            else if (!spot.isDiff && spot.isFlagged && showFlaggedMatched) visible = true;
+            else if (spot.isDiff && !spot.isFlagged && showDiff) visible = true;
+            else if (spot.isDiff && spot.isFlagged && showFlaggedDiff) visible = true;
 
             if (visible) {
                 if (imgLeftObj && spot.left) drawMarker(ctxLeft, canvasLeft, spot.left.x, spot.left.y, spot.id, spot.isDiff, spot.isFlagged, 'left');
@@ -567,14 +595,12 @@
 
     function exportCSV() {
         if (spotsData.length === 0) return alert("No data available to export.");
-        // 增加 Remark 导出列
         let csvContent = "data:text/csv;charset=utf-8,ID,Is_Differential,Is_Flagged,Left_X,Left_Y,Right_X,Right_Y,Remark\n";
         spotsData.forEach(row => {
             const lx = row.left ? row.left.x : 'null';
             const ly = row.left ? row.left.y : 'null';
             const rx = row.right ? row.right.x : 'null';
             const ry = row.right ? row.right.y : 'null';
-            // 确保备注中的英文逗号被替换掉，以免打乱CSV结构
             const safeRemark = (row.remark || '').replace(/,/g, ' '); 
             csvContent += `${row.id},${row.isDiff ? 'YES' : 'NO'},${row.isFlagged ? 'YES' : 'NO'},${lx},${ly},${rx},${ry},${safeRemark}\n`;
         });
@@ -617,7 +643,6 @@
                     const leftObj = cols[lxIdx].trim() === 'null' ? null : { x: parseInt(cols[lxIdx]), y: parseInt(cols[lyIdx]) };
                     const rightObj = cols[rxIdx].trim() === 'null' ? null : { x: parseInt(cols[rxIdx]), y: parseInt(cols[ryIdx]) };
                     
-                    // 读取导入时的备注信息，兼容旧版本无备注列的数据
                     const remarkStr = cols[ryIdx + 1] ? cols[ryIdx + 1].trim() : "";
                     
                     newSpots.push({
@@ -655,6 +680,18 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // 新增：处理下拉菜单选择并导出的逻辑
+    function handleExportDropdown(selectElement) {
+        const choice = selectElement.value;
+        if (choice === 'left') {
+            exportImage('canvasLeft', 'Gel1_Annotated.png');
+        } else if (choice === 'right') {
+            exportImage('canvasRight', 'Gel2_Annotated.png');
+        }
+        // 导出完成后将下拉菜单重置回默认提示项
+        selectElement.selectedIndex = 0;
     }
 </script>
 
